@@ -214,14 +214,18 @@ block_read( __u32 blockNr, __u32 start, __u32 len, char *buffer )
      {
 	  int i = 0;
 	  int j_len = 0;
+	  __u32 *journal_entry;
 
 	  if ( *journal_table != 0xffffffff )
 	  {
 	       /* Search for the blockNr in cached journal */
-	       j_len = le32_to_cpu((*journal_table)++);
+	       j_len = le32_to_cpu(*journal_table);
+		   journal_table += 4;
 	       while ( i++ < j_len )
 	       {
-		    if ( le32_to_cpu(*journal_table++) == blockNr )
+			journal_entry = journal_table;
+		    journal_table += 4;
+		    if ( le32_to_cpu(*journal_entry) == blockNr )
 		    {
 			 journal_table += j_len - i;
 			 goto found;
@@ -234,14 +238,21 @@ block_read( __u32 blockNr, __u32 start, __u32 len, char *buffer )
 		* transactions are still on disk. */
 	       struct reiserfs_journal_desc desc;
 	       struct reiserfs_journal_commit commit;
+		  __u32 j_realblock;
 
 	       if ( !journal_read( desc_block, sizeof(desc), (char *) &desc ) )
 		    return 0;
 
 	       j_len = le32_to_cpu(desc.j_len);
 	       while ( i < j_len && i < JOURNAL_TRANS_HALF )
-		    if ( le32_to_cpu(desc.j_realblock[i++]) == blockNr )
+		   {
+			j_realblock = desc.j_realblock[i]; 
+			i += 4;
+		    if ( le32_to_cpu(j_realblock) == blockNr )
+			{
 			 goto found;
+			}
+		   }
 
 	       if ( j_len >= JOURNAL_TRANS_HALF )
 	       {
@@ -252,8 +263,14 @@ block_read( __u32 blockNr, __u32 start, __u32 len, char *buffer )
 			 return 0;
 
 		    while ( i < j_len )
-			 if ( le32_to_cpu(commit.j_realblock[i++ - JOURNAL_TRANS_HALF]) == blockNr )
+			{
+			j_realblock = commit.j_realblock[i - JOURNAL_TRANS_HALF]; 
+			i += 4;
+			 if ( le32_to_cpu(j_realblock) == blockNr )
+			 {
 			      goto found;
+			 }
+			}
 	       }
 	  }
 	  goto not_found;
