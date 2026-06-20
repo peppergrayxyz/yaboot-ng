@@ -27,7 +27,7 @@ KERNELADDR	= 0x00000000
 #
 CROSS =
 
-CC		:= $(CROSS)gcc
+CC		:= $(CROSS)cc
 LD		:= $(CROSS)ld
 AS		:= $(CROSS)as
 OBJCOPY		:= $(CROSS)objcopy
@@ -88,7 +88,7 @@ UCFLAGS += -Werror -fdiagnostics-show-option
 
 # For compiling build-tools that run on the host.
 #
-HOSTCC = gcc
+HOSTCC = cc
 HOSTCFLAGS = -O2 $(CFLAGS) -Wall -I/usr/include
 
 ## End of configuration section
