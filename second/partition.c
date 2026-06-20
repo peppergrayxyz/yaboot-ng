@@ -175,7 +175,7 @@ partition_fdisk_lookup( const char *dev_name, prom_handle disk,
 	       add_new_partition(  list,
 				   partition,
 				   "Linux", /* type */
-				   '\0', /* name */
+				   "", /* name */
 				   le32_to_cpu(*(unsigned int *)part->start4),
 				   le32_to_cpu(*(unsigned int *)part->size4),
 				   512 /*blksize*/,
@@ -319,7 +319,7 @@ partition_amiga_lookup( const char *dev_name, prom_handle disk,
 		    list, /* partition list */
 		    partition, /* partition number */
 		    "Linux", /* type */
-		    '\0', /* name */
+		    "", /* name */
 		    blockspercyl * amiga_block[AMIGA_PART_LOWCYL], /* start */
 		    blockspercyl * (amiga_block[AMIGA_PART_HIGHCYL] - amiga_block[AMIGA_PART_LOWCYL] + 1), /* size */
 		    prom_blksize,
@@ -371,8 +371,8 @@ partitions_lookup(const char *device)
      } else if (prom_blksize == 2048 && identify_iso_fs(disk, &iso_root_block)) {
 	  add_new_partition(&list,
 			    0,
-			    '\0',
-			    '\0',
+			    "",
+			    "",
 			    iso_root_block,
 			    0,
 			    prom_blksize,
@@ -408,7 +408,7 @@ get_part_type(char *device, int partition)
      found = NULL;
 
      if (!parts)
-	  return '\0';
+	  return "";
 
      for (p = parts; p && !found; p=p->next) {
 	  DEBUG_F("number: %02d, start: 0x%08lx, length: 0x%08lx, type: %s, name: %s\n",
