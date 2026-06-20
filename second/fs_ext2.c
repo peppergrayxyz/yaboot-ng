@@ -119,7 +119,7 @@ static struct ext2_inode cur_inode;
 
 void com_err (const char *a, long i, const char *fmt,...)
 {
-     prom_printf ((char *) fmt);
+     prom_printf ("%s", (char *) fmt);
 }
 
 static int

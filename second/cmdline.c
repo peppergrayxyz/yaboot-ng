@@ -75,7 +75,7 @@ void cmdedit (void (*tabfunc) (void), int password)
 		    if (password)
 			 prom_printf("*");
 		    else
-			 prom_printf(buff + x);
+			 prom_printf("%s", buff + x);
 		    x++;
 	       }
 	       if (x == 1 && !password && useconf) {
