@@ -1,10 +1,1 @@
-# Editor files
-*.swp
-
-# Object files
-*.o
-
-# programs
-util/addnote
-second/yaboot
-
+/build*

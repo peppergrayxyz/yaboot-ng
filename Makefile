@@ -30,22 +30,26 @@ CROSS =
 CC		:= $(CROSS)cc
 LD		:= $(CROSS)ld
 AS		:= $(CROSS)as
-OBJCOPY		:= $(CROSS)objcopy
+OBJCOPY	:= $(CROSS)objcopy
+
+BUILD    ?= 
+BUILDDIR ?= build$(if $(strip $(CROSS)),-$(CROSS))$(if $(strip $(BUILD)),-$(BUILD))
 
 # The flags for the yaboot binary.
 #
-YBCFLAGS = -Os -m32 $(CFLAGS) -nostdinc -Wall -isystem `$(CC) -m32 -print-file-name=include` -fsigned-char -ffunction-sections -fdata-sections
+YBCFLAGS = -Os -m32 $(CFLAGS) -nostdinc -Wall
+YBCFLAGS +=	-isystem `$(CC) -m32 -print-file-name=include`
+YBCFLAGS += -fsigned-char
+YBCFLAGS += -ffreestanding
+YBCFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE=1
 YBCFLAGS += -I e2fsprogs/lib/
 YBCFLAGS += -I e2fsprogs/lib/ext2fs/
-YBCFLAGS += -I e2fsprogs/build/lib/
+YBCFLAGS += -I $(BUILDDIR)/e2fsprogs/lib/
 YBCFLAGS += -DNO_INLINE_FUNCS
 YBCFLAGS += -DVERSION="\"${VERSION}${VERSIONEXTRA}\""
 YBCFLAGS += -DTEXTADDR=$(TEXTADDR) -DDEBUG=$(DEBUG)
 YBCFLAGS += -DMALLOCADDR=$(MALLOCADDR) -DMALLOCSIZE=$(MALLOCSIZE)
 YBCFLAGS += -DKERNELADDR=$(KERNELADDR)
-YBCFLAGS += -Ddev_t=uint32_t
-YBCFLAGS += -Dtime_t=uint64_t
-YBCFLAGS += -Werror -fdiagnostics-show-option
 YBCFLAGS += -I ./include
 YBCFLAGS += -fno-strict-aliasing
 
@@ -75,34 +79,34 @@ LFLAGS = --image-base=0 -Ttext $(TEXTADDR) -Bstatic -melf32ppclinux --gc-section
 
 # Libraries
 #
-LLIBS = -lext2fs -lcom_err \
-        `$(CC) -m32 -print-file-name=libpthread.a`
+E2FSLIB = e2fsprogs/lib/libext2fs.a
+LLIBS := $(E2FSLIB)
 
 # For compiling userland utils
 #
-UCFLAGS = -Os -g $(CFLAGS) -Wall -I/usr/include
+UCFLAGS = -Os -g $(CFLAGS) -Wall
 UCFLAGS += -fstack-protector-strong
 UCFLAGS += -D_FORTIFY_SOURCE=2
 UCFLAGS += -Wl,-z,relro
-UCFLAGS += -Werror -fdiagnostics-show-option
+UCFLAGS += -Wno-error -fdiagnostics-show-option
 
 # For compiling build-tools that run on the host.
 #
 HOSTCC = cc
-HOSTCFLAGS = -O2 $(CFLAGS) -Wall -I/usr/include
+HOSTCFLAGS = -O2 $(CFLAGS) -Wall
+
+# e2fsprogs
+E2FSFLAGS = CFLAGS="-ffunction-sections -fdata-sections"
 
 ## End of configuration section
 
-OBJS = second/crt0.o second/yaboot.o second/cache.o second/prom.o second/file.o \
-	second/partition.o second/fs.o second/cfg.o second/setjmp.o second/cmdline.o \
-	second/errno_location.o second/fs_of.o second/fs_ext2.o second/fs_iso.o second/fs_swap.o \
-	second/iso_util.o \
-	second/calloc.o \
-	second/strnlen.o \
-	second/stubs.o \
-	lib/nonstd.o \
-	lib/nosys.o lib/string.o lib/strtol.o lib/vsprintf.o lib/ctype.o lib/malloc.o lib/strstr.o \
-	lib/bcmp.o
+SRCS := $(filter-out \
+	second/md5.c \
+	second/fs_xfs.c \
+	second/fs_reiserfs.c, \
+	$(wildcard second/*.c second/*.S lib/*.c lib/*.S))
+
+OBJS := $(addsuffix .o,$(basename $(SRCS)))
 
 ifeq ($(USE_MD5_PASSWORDS),y)
 OBJS += second/md5.o
@@ -116,25 +120,45 @@ ifeq ($(CONFIG_FS_REISERFS),y)
 OBJS += second/fs_reiserfs.o
 endif
 
+BUILD_OBJS := $(addprefix $(BUILDDIR)/yaboot/,$(OBJS))
+
 # compilation
 lgcc = `$(CC) -m32 -print-libgcc-file-name`
 
-all: second/yaboot util/addnote ybin/mkofboot
+.PHONY: all yaboot yaboot.chrp util/addnote elfextract ybin/mkofboot
+.PHONY: e2fsprogs/init e2fsprogs/Makefile e2fsprogs
+.PHONY: docs bindist clean cleandeps cleardeps cleandocs
 
-yaboot: $(OBJS) addnote
-	$(LD) $(LFLAGS) $(OBJS) $(LLIBS) $(lgcc) -o second/$@
-	chmod -x second/yaboot
-	cp second/yaboot second/yaboot.chrp
-	util/addnote second/yaboot.chrp
+all: yaboot ybin/mkofboot
 
-util/addnote:
-	$(CC) $(UCFLAGS) -o util/addnote util/addnote.c
+yaboot: $(BUILDDIR)/yaboot/yaboot
 
-elfextract:
-	$(CC) $(UCFLAGS) -o util/elfextract util/elfextract.c
+yaboot.chrp: $(BUILDDIR)/yaboot/yaboot.chrp
 
-ybin/mkofboot:
-	ln -sf ybin $@
+util/addnote: $(BUILDDIR)/yaboot/util/addnote
+
+elfextract: $(BUILDDIR)/yaboot/util/elfextract
+
+$(BUILDDIR)/yaboot/yaboot: $(BUILD_OBJS)
+	cd $(@D) && \
+	$(LD) $(LFLAGS) $(OBJS) $(addprefix ../,$(LLIBS)) $(lgcc) -o $(@F)
+	chmod -x $@
+
+$(BUILDDIR)/yaboot/yaboot.chrp: util/addnote yaboot
+	cp $(BUILDDIR)/yaboot/yaboot $@
+	$< $@
+
+$(BUILDDIR)/yaboot/util/addnote:
+	mkdir -p $(@D)
+	$(CC) $(UCFLAGS) -o $@ util/addnote.c
+
+$(BUILDDIR)/yaboot/util/elfextract:
+	$(CC) $(UCFLAGS) -o $@ util/elfextract.c
+
+ybin/mkofboot: $(BUILDDIR)/yaboot/mkofboot
+
+$(BUILDDIR)/yaboot/mkofboot: ybin/ybin
+	ln -sf ../../$< $@
 	@if [ $$(grep '^VERSION=' ybin/ybin | cut -f2 -d=) != ${VERSION} ] ; then	\
 		echo "ybin/ybin: warning: VERSION  mismatch"; 				\
 		false; 									\
@@ -142,30 +166,58 @@ ybin/mkofboot:
 
 #We need some headers built during the e2fsprogs build process.
 #Depend on the e2fsprogs library to force e2fsprogs to go first
-%.o: %.c $(E2FSLIB)
-	$(CC) $(YBCFLAGS) -c -o $@ $<
+$(BUILDDIR)/yaboot/%.o: %.c $(BUILDDIR)/$(E2FSLIB)
+	@mkdir -p $(@D)
+	$(CC) $(YBCFLAGS) -c $< -o $@ 
 
-%.o: %.S
-	$(CC) $(YBCFLAGS) -D__ASSEMBLY__  -c -o $@ $<
+$(BUILDDIR)/yaboot/%.o: %.S
+	@mkdir -p $(@D)
+	$(CC) $(YBCFLAGS) -D__ASSEMBLY__ -c $< -o $@ 
 
-e2fsprogs:
+e2fsprogs/init: $(BUILDDIR)/e2fsprogs/.patched~
+
+e2fsprogs/Makefile: $(BUILDDIR)/e2fsprogs/configure
+
+e2fsprogs: $(BUILDDIR)/e2fsprogs/Makefile
+
+$(BUILDDIR)/e2fsprogs/.patched~:
 	git submodule update --init e2fsprogs
+	cd e2fsprogs && \
+	git apply ../e2fsprogs-patches/*
+	touch .patched~
 
-e2fsprogs/build/Makefile: e2fsprogs
-	mkdir -p e2fsprogs/build;cd e2fsprogs/build;../configure --disable-mmp --disable-defrag --disable-bmap-stats
+$(BUILDDIR)/e2fsprogs/Makefile:
+	@mkdir -p $(@D)
+	cd $(@D) && \
+	$(E2FSFLAGS) \
+	../../e2fsprogs/configure \
+		--enable-libuuid \
+		--enable-libblkid \
+		--enable-year2038 \
+		--without-pthread \
+		--disable-debugfs \
+		--disable-imager \
+		--disable-resizer \
+		--disable-defrag \
+		--disable-fsck \
+		--disable-e2initrd-helper \
+		--disable-tdb \
+		--disable-bmap-stats \
+		--disable-testio-debug \
+		--disable-mmp \
+		--disable-tdb \
+		--disable-nls
+		
 
-$(E2FSLIB): e2fsprogs/build/Makefile
-	make -C e2fsprogs/build/
-
-dep:
-	makedepend -Iinclude *.c lib/*.c util/*.c gui/*.c
+$(BUILDDIR)/$(E2FSLIB): $(BUILDDIR)/e2fsprogs/Makefile
+	$(MAKE) -C $(<D)
 
 docs:
-	make -C doc all
+	$(MAKE) -C doc all
 
 bindist: all
 	mkdir ../yaboot-binary-${VERSION}
-	$(GETROOT) make ROOT=../yaboot-binary-${VERSION} install
+	$(GETROOT) $(MAKE) ROOT=../yaboot-binary-${VERSION} install
 	mkdir -p -m 755 ../yaboot-binary-${VERSION}/usr/local/share/doc/yaboot
 	cp -a COPYING ../yaboot-binary-${VERSION}/usr/local/share/doc/yaboot/COPYING
 	cp -a README ../yaboot-binary-${VERSION}/usr/local/share/doc/yaboot/README
@@ -178,7 +230,7 @@ bindist: all
 	rm -rf ../yaboot-binary-${VERSION}
 
 clean:
-	rm -f second/yaboot util/addnote util/elfextract $(OBJS)
+	rm -rf $(BUILDDIR)/yaboot
 	find . -not -path './\{arch\}*' -name '#*' | xargs rm -f
 	find . -not -path './\{arch\}*' -name '.#*' | xargs rm -f
 	find . -not -path './\{arch\}*' -name '*~' | xargs rm -f
@@ -187,8 +239,11 @@ clean:
 	-gunzip man/*.gz
 	rm -rf man.deb
 
+cleandeps:
+	$(MAKE) -C $(BUILDDIR)/e2fsprogs clean
+
 cleandocs:
-	make -C doc clean
+	$(MAKE) -C doc clean
 
 ## removes arch revision control crap, only to be called for making
 ## release tarballs.  arch should have a export command like cvs...
@@ -215,9 +270,9 @@ install: all
 	install -d -o root -g root -m 0755 ${ROOT}/${PREFIX}/lib/yaboot
 	install -d -o root -g root -m 0755 ${ROOT}/${PREFIX}/${MANDIR}/man5/
 	install -d -o root -g root -m 0755 ${ROOT}/${PREFIX}/${MANDIR}/man8/
-	install -o root -g root -m 0644 second/yaboot ${ROOT}/$(PREFIX)/lib/yaboot
-	install -o root -g root -m 0644 second/yaboot.chrp ${ROOT}/$(PREFIX)/lib/yaboot
-	install -o root -g root -m 0755 util/addnote ${ROOT}/${PREFIX}/lib/yaboot/addnote
+	install -o root -g root -m 0644 $(BUILDDIR)/yaboot/yaboot ${ROOT}/$(PREFIX)/lib/yaboot
+#	install -o root -g root -m 0644 $(BUILDDIR)/yaboot/yaboot.chrp ${ROOT}/$(PREFIX)/lib/yaboot
+#	install -o root -g root -m 0755 $(BUILDDIR)/yaboot/util/addnote ${ROOT}/${PREFIX}/lib/yaboot/addnote
 	install -o root -g root -m 0644 first/ofboot ${ROOT}/${PREFIX}/lib/yaboot/ofboot
 	install -o root -g root -m 0755 ybin/ofpath ${ROOT}/${PREFIX}/sbin/ofpath
 	install -o root -g root -m 0755 ybin/ybin ${ROOT}/${PREFIX}/sbin/ybin
