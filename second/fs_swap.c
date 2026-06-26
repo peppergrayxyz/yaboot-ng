@@ -51,7 +51,7 @@ static int
 swap_open(struct boot_file_t* file, struct partition_t* part,
           struct boot_fspec_t* fspec)
 {
-     int i;
+     size_t i;
      unsigned char *buffer;
      /* Make static to move into the BSS rather then the stack */
      static char device_name[1024];
@@ -115,11 +115,8 @@ swap_open(struct boot_file_t* file, struct partition_t* part,
 
 struct fs_t swap_filesystem =
 {
-     "swap signature checker",
-     swap_open,
-     NULL,
-     NULL,
-     NULL,
+     .name = "swap signature checker",
+     .open = swap_open,
 };
 
 /*

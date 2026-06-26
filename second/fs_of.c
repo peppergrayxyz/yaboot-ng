@@ -62,11 +62,11 @@ static unsigned int of_net_ino_size(struct boot_file_t* file);
 
 struct fs_t of_filesystem =
 {
-     "built-in",
-     of_open,
-     of_read,
-     of_seek,
-     of_close
+     .name  = "built-in",
+     .open  = of_open,
+     .read  = of_read,
+     .seek  = of_seek,
+     .close = of_close,
 };
 
 struct fs_t of_net_filesystem =
@@ -140,6 +140,8 @@ of_net_open(struct boot_file_t* file,
      char               *filename = NULL;
      char               *p;
      int                new_tftp;
+
+     (void) part; /* FIXME */
 
      DEBUG_ENTER;
      DEBUG_OPEN;

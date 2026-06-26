@@ -94,6 +94,9 @@ partition_mac_lookup( const char *dev_name, prom_handle disk,
 {
      int block, map_size;
 
+	 (void) dev_name; /* FIXME */
+	 (void) prom_blksize;
+
      /* block_buffer contains block 0 from the partitions_lookup() stage */
      struct mac_partition* part = (struct mac_partition *)block_buffer;
      unsigned short ptable_block_size =
@@ -164,6 +167,10 @@ partition_fdisk_lookup( const char *dev_name, prom_handle disk,
 {
      int partition;
 
+	 (void) dev_name;
+	 (void) disk;
+	 (void) prom_blksize;
+
      /* fdisk partition tables start at offset 0x1be
       * from byte 0 of the boot drive.
       */
@@ -225,8 +232,7 @@ identify_iso_fs(ihandle device, unsigned int *iso_root_block)
 static int
 _amiga_checksum (unsigned int blk_size)
 {
-	unsigned int sum;
-	int i, end;
+	unsigned int sum, i, end;
 	unsigned int *amiga_block = (unsigned int *) block_buffer;
 
 	sum = amiga_block[0];
@@ -244,6 +250,8 @@ _amiga_find_rdb (const char *dev_name, prom_handle disk, unsigned int prom_blksi
 {
 	int i;
 	unsigned int *amiga_block = (unsigned int *) block_buffer;
+
+	(void) dev_name;
 
 	for (i = 0; i<AMIGA_RDB_MAX; i++) {
 		if (i != 0) {
@@ -267,13 +275,13 @@ static void
 partition_amiga_lookup( const char *dev_name, prom_handle disk,
                         unsigned int prom_blksize, struct partition_t** list )
 {
-	int partition, part;
 	unsigned int blockspercyl;
 	unsigned int *amiga_block = (unsigned int *) block_buffer;
 	unsigned int *used = NULL;
 	unsigned int possible;
 	int checksum;
-	int i;
+
+	(void) dev_name;
 
 	blockspercyl = amiga_block[AMIGA_SECT] * amiga_block[AMIGA_HEADS];
 	possible = amiga_block[AMIGA_RDBLIMIT]/32 +1;
@@ -284,10 +292,10 @@ partition_amiga_lookup( const char *dev_name, prom_handle disk,
                return;
 	}
 
-	for (i=0; i < possible; i++) used[i] = 0;
+	for (size_t i=0; i < possible; i++) used[i] = 0;
 
 
-	for (part = amiga_block[AMIGA_PARTITIONS], partition = 1;
+	for (size_t part = amiga_block[AMIGA_PARTITIONS], partition = 1;
 		part != AMIGA_END;
 		part = amiga_block[AMIGA_PART_NEXT], partition++)
 	{

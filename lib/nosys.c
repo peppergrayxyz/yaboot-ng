@@ -46,6 +46,8 @@ int __fstat_time64(int fd, void *st)
 }
 
 int __gettimeofday64(struct yaboot_timeval64 *restrict tv, struct yaboot_timezone *restrict tz) {
+	(void) tv;
+	(void) tz;
 	return 0;
 }
 

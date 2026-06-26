@@ -1,3 +1,6 @@
+
+.section .note.GNU-stack,"",@progbits
+
 	.globl	__sigsetjmp
 __sigsetjmp:
 	mflr	0

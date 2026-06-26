@@ -21,6 +21,6 @@ int getegid(void) {
 }
 
 int gethostname(char *name, size_t size) {
-    name = "";
+    if(size > 0) name[0] = '\0';
     return 0;
 }

@@ -77,14 +77,14 @@ static errcode_t linux_flush (io_channel channel);
 
 static struct struct_io_manager struct_linux_manager =
 {
-     EXT2_ET_MAGIC_IO_MANAGER,
-     "linux I/O Manager",
-     linux_open,
-     linux_close,
-     linux_set_blksize,
-     linux_read_blk,
-     linux_write_blk,
-     linux_flush
+    .magic 		 = EXT2_ET_MAGIC_IO_MANAGER,
+    .name  		 =  "linux I/O Manager",
+    .open  	     = linux_open,
+    .close       = linux_close,
+    .set_blksize =  linux_set_blksize,
+    .read_blk    = linux_read_blk,
+    .write_blk   = linux_write_blk,
+    .flush 		 = linux_flush,
 };
 
 static io_manager linux_io_manager = &struct_linux_manager;
@@ -117,9 +117,10 @@ static int read_iterator(ext2_filsys fs, blk_t *blocknr, int lg_block, void *pri
 static struct ext2_inode cur_inode;
 #endif /* FAST_VERSION */
 
-void com_err (const char *a, long i, const char *fmt,...)
+void com_err (const char *whoami, long code, const char *format, ...)
 {
-     prom_printf ("%s", (char *) fmt);
+	/* FIXME va_args */
+    prom_printf ("[%s] error %ld: %s", whoami, code, (char *) format);
 }
 
 static int
@@ -288,7 +289,7 @@ static int
 read_dump_range(void)
 {
      int count = read_range_count;
-     int size;
+     size_t size;
 
 #ifdef VERBOSE_DEBUG
      DEBUG_F("   dumping range: start: 0x%x count: 0x%x\n",
@@ -326,18 +327,21 @@ read_dump_range(void)
 }
 
 static int
-read_iterator(ext2_filsys fs, blk_t *blocknr, int lg_block, void *private)
+read_iterator(ext2_filsys fs, blk_t *blocknr, int _lg_block, void *private)
 {
+	(void) private; /* FIXME */
+
 #ifdef VERBOSE_DEBUG
      DEBUG_F("read_it: p_bloc: 0x%x, l_bloc: 0x%x, f_pos: 0x%x, rng_pos: 0x%x   ",
-	     *blocknr, lg_block, read_cur_file->pos, read_last_logical);
+	     *blocknr, _lg_block, read_cur_file->pos, read_last_logical);
 #endif
-     if (lg_block < 0) {
+     if (_lg_block < 0) {
 #ifdef VERBOSE_DEBUG
 	  DEBUG_F(" <skip lg>\n");
 #endif
 	  return 0;
      }
+	 size_t lg_block = _lg_block;
 
      /* If we have not reached the start block yet, we skip */
      if (lg_block < read_cur_file->pos / bs) {
@@ -376,8 +380,8 @@ read_iterator(ext2_filsys fs, blk_t *blocknr, int lg_block, void *private)
 	  DEBUG_F(" hole from lg_bloc 0x%x\n", read_last_logical);
 #endif
 	  if (read_cur_file->pos % bs) {
-	       int offset = read_cur_file->pos % bs;
-	       int size = bs - offset;
+	       size_t offset = read_cur_file->pos % bs;
+	       size_t size = bs - offset;
 	       if (size > read_max)
 		    size = read_max;
 	       memset(read_buffer, 0, size);
@@ -406,8 +410,8 @@ read_iterator(ext2_filsys fs, blk_t *blocknr, int lg_block, void *private)
 
      /* If we are not aligned, handle that case */
      if (read_cur_file->pos % bs) {
-	  int offset = read_cur_file->pos % bs;
-	  int size = bs - offset;
+	  size_t offset = read_cur_file->pos % bs;
+	  size_t size = bs - offset;
 #ifdef VERBOSE_DEBUG
 	  DEBUG_F(" handle unaligned start\n");
 #endif
@@ -581,6 +585,7 @@ static errcode_t linux_open (const char *name, int flags, io_channel * channel)
 {
      io_channel io;
 
+	 (void) flags;
 
      if (!name)
 	  return EXT2_ET_BAD_DEVICE_NAME;
@@ -622,6 +627,8 @@ static errcode_t linux_read_blk (io_channel channel, unsigned long block, int co
      int size;
      unsigned long long tempb;
 
+	 (void) channel; /* FIXME */
+
      if (count == 0)
 	  return 0;
 
@@ -636,7 +643,7 @@ static errcode_t linux_read_blk (io_channel channel, unsigned long block, int co
 	  return EXT2_ET_LLSEEK_FAILED;
      }
 
-     size = (count < 0) ? -count : count * bs;
+     size = (count < 0) ? -count : count * (int) bs;
      prom_lseek(cur_file->of_device, tempb);
      if (prom_read(cur_file->of_device, data, size) != size) {
 	  DEBUG_F("\nRead error on block %ld\n", block);
@@ -647,11 +654,18 @@ static errcode_t linux_read_blk (io_channel channel, unsigned long block, int co
 
 static errcode_t linux_write_blk (io_channel channel, unsigned long block, int count, const void *data)
 {
+	(void) channel;
+	(void) block;
+	(void) count;
+	(void) data;
+
+	/* FIXME: panic here? */
      return 0;
 }
 
 static errcode_t linux_flush (io_channel channel)
 {
+	(void) channel;
      return 0;
 }
 

@@ -627,6 +627,10 @@ default_read(	struct boot_file_t*	file,
 		unsigned int		size,
 		void*			buffer)
 {
+     (void) file;
+     (void) size;
+     (void) buffer;
+
      prom_printf("WARNING ! default_read called !\n");
      return FILE_ERR_EOF;
 }
@@ -635,6 +639,9 @@ static int
 default_seek(	struct boot_file_t*	file,
 		unsigned int		newpos)
 {
+     (void) file;
+     (void) newpos;
+
      prom_printf("WARNING ! default_seek called !\n");
      return FILE_ERR_EOF;
 }
@@ -642,17 +649,18 @@ default_seek(	struct boot_file_t*	file,
 static int
 default_close(	struct boot_file_t*	file)
 {
+     (void) file;
+
      prom_printf("WARNING ! default_close called !\n");
      return FILE_ERR_OK;
 }
 
 static struct fs_t fs_default =
 {
-     "defaults",
-     NULL,
-     default_read,
-     default_seek,
-     default_close
+     .name  = "defaults",
+     .read  = default_read,
+     .seek  = default_seek,
+     .close = default_close,
 };
 
 

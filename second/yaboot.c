@@ -175,6 +175,9 @@ yaboot_start (unsigned long r3, unsigned long r4, unsigned long r5)
      void* malloc_base = NULL;
      prom_handle root;
 
+     (void) r3;
+     (void) r4;
+
      /* Initialize OF interface */
      prom_init ((prom_entry) r5);
 
@@ -991,8 +994,9 @@ int get_params(struct boot_param_t* params)
                    strcat(initrdpath, manualinitrd);
                } else
                    strncpy(initrdpath, manualinitrd, 1024);
-           } else
+           } else {
                strncpy(initrdpath, p, 1024);
+           }
 
 	       DEBUG_F("Parsing initrd path <%s>\n", initrdpath);
 	       params->rd = boot; /* Copy all the original paramters */
@@ -1062,7 +1066,7 @@ yaboot_text_ui(void)
 	  /* Read the Elf e_ident, e_type and e_machine fields to
 	   * determine Elf file type
 	   */
-	  if (file.fs->read(&file, sizeof(Elf_Ident), &loadinfo.elf) < sizeof(Elf_Ident)) {
+	  if (file.fs->read(&file, sizeof(Elf_Ident), &loadinfo.elf) < (off_t) sizeof(Elf_Ident)) {
 	       prom_printf("\nCan't read Elf e_ident/e_type/e_machine info\n");
 	       file.fs->close(&file);
 	       memset(&file, 0, sizeof(file));
@@ -1232,7 +1236,7 @@ load_elf32(struct boot_file_t *file, loadinfo_t *loadinfo)
 	  goto bail;
      }
      if ((*(file->fs->read))(file, sizeof(Elf32_Phdr) * e->e_phnum, ph) !=
-	 sizeof(Elf32_Phdr) * e->e_phnum) {
+	 (off_t)sizeof(Elf32_Phdr) * e->e_phnum) {
 	  prom_printf ("read error\n");
 	  goto bail;
      }
@@ -1306,7 +1310,7 @@ load_elf32(struct boot_file_t *file, loadinfo_t *loadinfo)
 	       goto bail;
 	  }
 	  offset = p->p_vaddr - loadinfo->load_loc;
-	  if ((*(file->fs->read))(file, p->p_filesz, loadinfo->base+offset) != p->p_filesz) {
+	  if ((*(file->fs->read))(file, p->p_filesz, loadinfo->base+offset) != (off_t) p->p_filesz) {
 	       prom_printf ("Read failed\n");
 	       prom_release(loadinfo->base, loadinfo->memsize);
 	       goto bail;
@@ -1365,7 +1369,7 @@ load_elf64(struct boot_file_t *file, loadinfo_t *loadinfo)
 	  goto bail;
      }
      if ((*(file->fs->read))(file, sizeof(Elf64_Phdr) * e->e_phnum, ph) !=
-	 sizeof(Elf64_Phdr) * e->e_phnum) {
+	 (off_t)sizeof(Elf64_Phdr) * e->e_phnum) {
 	  prom_printf ("Read error\n");
 	  goto bail;
      }
@@ -1438,7 +1442,7 @@ load_elf64(struct boot_file_t *file, loadinfo_t *loadinfo)
 	       goto bail;
 	  }
 	  offset = p->p_vaddr - loadinfo->load_loc;
-	  if ((*(file->fs->read))(file, p->p_filesz, loadinfo->base+offset) != p->p_filesz) {
+	  if ((*(file->fs->read))(file, p->p_filesz, loadinfo->base+offset) != (off_t) p->p_filesz) { /* TODO: fix return types */
 	       prom_printf ("Read failed\n");
 	       prom_release(loadinfo->base, loadinfo->memsize);
 	       goto bail;

@@ -21,6 +21,10 @@
 #include "asm/processor.h"
 #include "asm/ppc_asm.tmpl"
 
+.section .note.GNU-stack,"",@progbits
+
+	.globl	__strcpy_chk
+__strcpy_chk:
 	.globl	strcpy
 strcpy:
 	addi	r5,r3,-1

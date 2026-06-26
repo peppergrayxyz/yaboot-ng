@@ -1,6 +1,8 @@
 #include "asm/ppc_asm.tmpl"
 #include "asm/processor.h"
 
+.section .note.GNU-stack,"",@progbits
+
 /*
  * Main entry point. We zero the BSS then jump to yaboot_start.
  */

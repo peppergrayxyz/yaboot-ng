@@ -41,6 +41,8 @@ int printf(const char *format, ...)
 
 int fprintf(FILE *stream, const char *format, ...)
 {
+	(void) stream;
+
 	va_list ap;
 	va_start (ap, format);
 	prom_vfprintf (prom_stdout, format, ap);
@@ -51,6 +53,7 @@ int fprintf(FILE *stream, const char *format, ...)
 
 int fputs(const char *s, FILE *stream)
 {
+	(void) stream;
 	prom_printf("%s", s);
 
 	return 0;
@@ -58,19 +61,26 @@ int fputs(const char *s, FILE *stream)
 
 int fflush(FILE *stream)
 {
+	(void) stream;
 	return 0;
 }
 
 char *getenv(const char *name)
 {
+	(void) name;
 	return NULL;
 }
 
-void exit(int status) {
+void exit(int status) 
+{
+	prom_printf("exit %x\n", status);
 	prom_exit();
 }
 
-int __printf_chk(int flag, const char *format, ...) {
+int __printf_chk(int flag, const char *format, ...) 
+{
+	(void) flag;
+
 	va_list ap;
 	va_start (ap, format);
 	prom_vfprintf (prom_stdout, format, ap);
@@ -79,7 +89,13 @@ int __printf_chk(int flag, const char *format, ...) {
 	return 0;
 }
 
-int __sprintf_chk(char * str, int flag, size_t strlen, const char * format, ...) {
+int __sprintf_chk(char * str, int flag, size_t strlen, const char * format, ...) 
+{
+	(void) str;
+	(void) flag;
+	(void) strlen;
+	(void) format;
+
 	va_list ap;
 	va_start(ap, format);
 	// No sprintf? :(
@@ -88,7 +104,11 @@ int __sprintf_chk(char * str, int flag, size_t strlen, const char * format, ...)
 
 }
 
-int __fprintf_chk(FILE *stream, int flag, const char *format, ...) {
+int __fprintf_chk(FILE *stream, int flag, const char *format, ...) 
+{
+	(void) stream;
+	(void) flag;
+
 	va_list ap;
 	va_start (ap, format);
 	prom_vfprintf (prom_stdout, format, ap);
@@ -99,6 +119,7 @@ int __fprintf_chk(FILE *stream, int flag, const char *format, ...) {
 
 void *memcpy(void *dest, const void *src, size_t n);
 void *__memcpy_chk(void *dest, const void *src, size_t n, size_t destlen) {
+	(void) destlen; /* FIXME */
 	return memcpy(dest, src, n);
 }
 

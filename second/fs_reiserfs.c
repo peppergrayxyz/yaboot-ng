@@ -42,16 +42,16 @@ static int reiserfs_seek( struct boot_file_t *file, unsigned int newpos );
 static int reiserfs_close( struct boot_file_t *file );
 
 struct fs_t reiserfs_filesystem = {
-     "reiserfs",
-     reiserfs_open,
-     reiserfs_read,
-     reiserfs_seek,
-     reiserfs_close
+    .name  = "reiserfs",
+    .open  = reiserfs_open,
+    .read  = reiserfs_read,
+    .seek  = reiserfs_seek,
+    .close = reiserfs_close,
 };
 
 static int reiserfs_read_super( void );
 static int reiserfs_open_file( char *dirname );
-static int reiserfs_read_data( char *buf, __u32 len );
+static size_t reiserfs_read_data( char *buf, size_t len );
 
 
 static struct reiserfs_state reiserfs;
@@ -130,13 +130,14 @@ reiserfs_open( struct boot_file_t *file, struct partition_t *part,
 }
 
 static int
-reiserfs_read( struct boot_file_t *file, unsigned int size, void *buffer )
+reiserfs_read( struct boot_file_t *file, size_t size, void *buffer )
 {
+	(void) file; /* FIXME */
      return reiserfs_read_data( buffer, size );
 }
 
 static int
-reiserfs_seek( struct boot_file_t *file, unsigned int newpos )
+reiserfs_seek( struct boot_file_t *file, size_t newpos )
 {
      file->pos = newpos;
      return FILE_ERR_OK;
@@ -356,7 +357,7 @@ journal_init( void )
 	       }
 	       else
 	       {
-		    int i;
+		    size_t i;
 
 		    /* Cache the length and the realblock numbers in the table. *
 		     * The block number of descriptor can easily be computed. *
@@ -765,12 +766,12 @@ search_stat( __u32 dir_id, __u32 objectid )
      return 0;
 }
 
-static int
-reiserfs_read_data( char *buf, __u32 len )
+static size_t
+reiserfs_read_data( char *buf, size_t len )
 {
-     __u32 blocksize;
-     __u32 offset;
-     __u32 to_read;
+     size_t blocksize;
+     size_t offset;
+     size_t to_read;
      char *prev_buf = buf;
      errnum = 0;
 

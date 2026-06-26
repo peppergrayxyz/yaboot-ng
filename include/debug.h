@@ -36,12 +36,12 @@
                              fspec->file)
 # define DEBUG_SLEEP prom_sleep(3)
 #else
-#define DEBUG_ENTER
-#define DEBUG_LEAVE(x)
-#define DEBUG_LEAVE_F(args...)
-#define DEBUG_F(fmt, args...)
-#define DEBUG_OPEN
-#define DEBUG_SLEEP
+#define DEBUG_ENTER             {}
+#define DEBUG_LEAVE(x)          {}
+#define DEBUG_LEAVE_F(args...)  {}
+#define DEBUG_F(fmt, args...)   {}
+#define DEBUG_OPEN              {}
+#define DEBUG_SLEEP             {}
 #endif
 
 /*

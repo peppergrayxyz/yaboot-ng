@@ -66,9 +66,9 @@ struct boot_file_t {
 	int		device_kind;
 	ihandle		of_device;
 	ino_t		inode;
-	__u64           pos;
+	loff_t		pos;
 	unsigned char*	buffer;
-	__u64   	len;
+	loff_t   	len;
 //	unsigned int	dev_blk_size;
 //	unsigned int	part_start;
 //	unsigned int	part_count;

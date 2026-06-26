@@ -358,6 +358,8 @@ prom_readblocks (prom_handle dev, int blockNum, int blockCount, void *buffer)
      int status;
      unsigned int blksize;
 
+     (void) blockCount; /* FIXME */
+
      blksize = prom_getblksize(dev);
      if (blksize <= 1)
 	  blksize = 512;
@@ -371,7 +373,7 @@ prom_readblocks (prom_handle dev, int blockNum, int blockCount, void *buffer)
 //  prom_printf("prom_readblocks, bl: %d, cnt: %d, status: %d\n",
 //  	blockNum, blockCount, status);
 
-     return status == (blockCount * blksize);
+     return status == (off_t)(blockCount * blksize);
 #else
      int result;
      int retries = 10;
@@ -575,7 +577,7 @@ prom_abort (char *fmt, ...)
 void
 prom_sleep (int seconds)
 {
-     int end;
+     int end; /* FIXME */
      end = (prom_getms() + (seconds * 1000));
      while (prom_getms() <= end);
 }
@@ -586,6 +588,8 @@ prom_sleep (int seconds)
 void *
 prom_claim_chunk(void *virt, unsigned int size, unsigned int align)
 {
+     (void) align;
+
      void *found, *addr;
      for(addr=virt; addr <= (void*)PROM_CLAIM_MAX_ADDR;
          addr+=(0x100000/sizeof(addr))) {
@@ -603,6 +607,8 @@ prom_claim_chunk(void *virt, unsigned int size, unsigned int align)
 void *
 prom_claim_chunk_top(unsigned int size, unsigned int align)
 {
+     (void) align;
+
      void *found, *addr;
      for(addr=(void*)PROM_CLAIM_MAX_ADDR; addr >= (void *)size;
          addr-=(0x100000/sizeof(addr))) {
@@ -709,21 +715,22 @@ struct bootp_packet * prom_get_netinfo (void)
         the VLA /must/ be the last field in the structure so use it's
         offset as a good estimate of the packet size */
      size_t packet_size = offsetof(struct bootp_packet, options);
-     int i = 0, size, offset = 0;
+     size_t size = 0, offset = 0;
      prom_handle chosen;
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
      chosen = prom_finddevice("/chosen");
-     if (chosen < 0) {
+     if ((int32_t) chosen < 0) {
           DEBUG_F("chosen=%lu\n", (unsigned long)chosen);
-      return 0;
+          return 0;
      }
 
-     for (i = 0; i < ARRAY_SIZE(bootp_response_properties); i++) {
+     for (size_t i = 0; i < ARRAY_SIZE(bootp_response_properties); i++) {
          propname = bootp_response_properties[i].name;
-         size = prom_getproplen(chosen, propname);
-         if (size <= 0)
+         ssize_t _size = size = prom_getproplen(chosen, propname);
+         if (_size <= 0)
              continue;
+         size = _size;
 
          DEBUG_F("using /chosen/%s\n", propname);
          offset = bootp_response_properties[i].offset;
@@ -756,7 +763,6 @@ struct bootp_packet * prom_get_netinfo (void)
 char * prom_get_mac (struct bootp_packet * packet)
 {
      char * conf_path;
-     int i;
 
      if (!packet)
         return NULL;
@@ -767,7 +773,7 @@ char * prom_get_mac (struct bootp_packet * packet)
          return NULL;
      sprintf(conf_path, "%02x", packet->chaddr[0]);
 
-     for (i = 1; i < packet->hlen; i++) {
+     for (size_t i = 1; i < packet->hlen; i++) {
       char tmp[4];
       sprintf(tmp, "-%02x", packet->chaddr[i]);
       strcat(conf_path, tmp);
@@ -825,10 +831,10 @@ void prom_print_available(void)
      if (mem == PROM_INVALID_HANDLE)
           return;
 
-     len = prom_getprop(mem, "available", available, sizeof(available));
-     if (len == -1)
+     int _len = prom_getprop(mem, "available", available, sizeof(available));
+     if (_len == -1)
           return;
-     len /= 4;
+     len = _len / 4;
 
      prom_printf("\nAvailable memory ranges:\n");
 

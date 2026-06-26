@@ -35,7 +35,7 @@
 #define SECTOR_BITS 9
 
 int xfs_mount (void);
-int xfs_read_data (char *buf, int len);
+size_t xfs_read_data (char *buf, size_t len);
 int xfs_dir (char *dirname);
 
 /* Exported in struct fs_t */
@@ -46,11 +46,11 @@ static int xfs_seek(struct boot_file_t *file, unsigned int newpos);
 static int xfs_close(struct boot_file_t *file);
 
 struct fs_t xfs_filesystem = {
-	"xfs",
-	xfs_open,
-	xfs_read,
-	xfs_seek,
-	xfs_close
+	.name  = "xfs",
+	.open  = xfs_open,
+	.read  = xfs_read,
+	.seek  = xfs_seek,
+	.close = xfs_close,
 };
 
 struct boot_file_t *xfs_file;
@@ -125,6 +125,7 @@ xfs_open(struct boot_file_t *file,
 static int
 xfs_read(struct boot_file_t *file, unsigned int size, void *buffer)
 {
+	(void) file; /* FIXME: fix xfs_file */
 	return xfs_read_data(buffer, size);
 }
 
@@ -645,13 +646,13 @@ xfs_mount (void)
 	return 1;
 }
 
-int
-xfs_read_data (char *buf, int len)
+size_t
+xfs_read_data (char *buf, size_t len)
 {
 	xad_t *xad;
 	xfs_fileoff_t endofprev, endofcur, offset;
 	xfs_filblks_t xadlen;
-	int toread, startpos, endpos;
+	size_t toread, startpos, endpos;
 
 	if (icore.di_format == XFS_DINODE_FMT_LOCAL) {
 		memmove(buf, inode->di_u.di_c + xfs_file->pos, len);

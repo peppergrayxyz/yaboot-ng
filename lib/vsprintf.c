@@ -245,7 +245,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 			break;
 
 		case 'X':
-			flags |= LARGE;
+			flags |= LARGE;	__attribute__ ((fallthrough));
 		case 'x':
 			base = 16;
 			break;
